@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Blog</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .ccc3{
+            background-image: url('background4.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        .blog-details {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .blog-details h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .blog-details p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .blog-details img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .upvote-btn, .downvote-btn {
+            width: 40px;
+            height: 40px;
+            background-position: center;
+            background-size: contain;
+            border: none;
+            cursor: pointer;
+        }
+        .upvote-btn {
+            background-image: url("upvote.png");
+        }
+        .downvote-btn {
+            background-image: url("downvote.png");
+        }
+        .highlight {
+            border: 2px solid #007BFF;
+            border-radius: 50%;
+        }
+        .vote-count {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .comments-section {
+            margin-top: 30px;
+        }
+        .comment {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #e9e9e9;
+            border-radius: 5px;
+        }
+        .comment p {
+            margin: 0;
+        }
+        .comment .username {
+            font-weight: bold;
+        }
+        .new-comment {
+            margin-top: 20px;
+        }
+        .new-comment textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .new-comment button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="ccc3">
+    <header>
+        <div class="container">
+            <h1>Interior Design Blog</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="explore.html">Explore</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="blog-details">
+        <div class="container">
+            <div id="blog-content"></div>
+            <div class="comments-section">
+                <h3>Comments</h3>
+                <div id="comments"></div>
+                <div class="new-comment">
+                    <textarea id="comment-text" rows="4" placeholder="Add a comment..."></textarea>
+                    <button onclick="postComment()">Post Comment</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Interior Design Blog. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('user_status.json?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(data => {
+                    if (data.logged_in) {
+                        const userId = data.user.id;
+                        const blogId = new URLSearchParams(window.location.search).get('blog_id');
+                        if (blogId) {
+                            fetchBlogDetails(blogId, userId);
+                        } else {
+                            document.getElementById('blog-content').innerHTML = '<p>No blog ID provided.</p>';
+                        }
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                })
+                .catch(error => console.error('Error fetching user status:', error));
+        });
+
+        function fetchBlogDetails(blogId, userId) {
+            fetch(`blog_details.php?blog_id=${blogId}&user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const blogContent = document.getElementById('blog-content');
+                    if (data.error) {
+                        blogContent.innerHTML = `<p>${data.error}</p>`;
+                    } else {
+                        // Display blog details
+                        let imagesHtml = '';
+                        data.images.forEach(image => {
+                            imagesHtml += `<img src="${image}" alt="Blog Image">`;
+                        });
+                        const blogDetails = `
+                            <h2>${blogId}</h2>
+                            <p>Date: ${data.date}</p>
+                            ${imagesHtml}
+                            <div>
+                                <button class="upvote-btn" onclick="upvote(${blogId}, ${userId})"></button>
+                                <span class="vote-count upvote-count">${data.upvoteCount}</span>
+                                <button class="downvote-btn" onclick="downvote(${blogId}, ${userId})"></button>
+                                <span class="vote-count downvote-count">${data.downvoteCount}</span>
+                            </div>
+                        `;
+                        blogContent.innerHTML = blogDetails;
+
+                        // Highlight upvote/downvote button based on user's vote
+                        if (data.user_vote === 'upvote') {
+                            document.querySelector('.upvote-btn').classList.add('highlight');
+                        } else if (data.user_vote === 'downvote') {
+                            document.querySelector('.downvote-btn').classList.add('highlight');
+                        }
+
+                        // Fetch and display comments
+                        fetchComments(blogId);
+                    }
+                })
+                .catch(error => {
+                    const blogContent = document.getElementById('blog-content');
+                    blogContent.innerHTML = `<p>Error loading blog details: ${error.message}</p>`;
+                });
+        }
+
+        function fetchComments(blogId) {
+            fetch(`comments.php?blog_id=${blogId}`)
+                .then(response => response.json())
+                .then(comments => {
+                    const commentsContainer = document.getElementById('comments');
+                    commentsContainer.innerHTML = '';
+                    comments.forEach(comment => {
+
+                        const commentHtml = `
+                        <div class="comment">
+                            <p class="username">${comment.username}</p>
+                            <p>${comment.comment}</p>
+                            <p class="date">${comment.date}</p>
+                        </div>
+                    `;
+                    commentsContainer.innerHTML += commentHtml;
+                });
+            })
+            .catch(error => {
+                const commentsContainer = document.getElementById('comments');
+                commentsContainer.innerHTML = `<p>Error loading comments: ${error.message}</p>`;
+            });
+    }
+
+    function postComment() {
+        const commentText = document.getElementById('comment-text').value.trim();
+        const blogId = new URLSearchParams(window.location.search).get('blog_id');
+
+        if (commentText !== '') {
+            fetch('comments.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ blogId: blogId, comment: commentText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload comments after posting
+                    fetchComments(blogId);
+                    // Clear the comment input field
+                    document.getElementById('comment-text').value = '';
+                } else {
+                    console.error(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error posting comment:', error);
+            });
+        }
+    }
+
+    function getUserId() {
+        const userData = JSON.parse(localStorage.getItem('user_data'));
+        return userData ? userData.id : null;
+    }
+
+    function getBlogId() {
+        return new URLSearchParams(window.location.search).get('blog_id');
+    }
+
+    function upvote(blogId, userId) {
+        fetch('vote.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ blogId: blogId, userId: userId, voteType: 'upvote' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const upvoteCount = document.querySelector('.upvote-count');
+                const downvoteCount = document.querySelector('.downvote-count');
+                upvoteCount.textContent = data.upvoteCount;
+                downvoteCount.textContent = data.downvoteCount;
+
+                document.querySelector('.upvote-btn').classList.add('highlight');
+                document.querySelector('.downvote-btn').classList.remove('highlight');
+            } else {
+                console.error(data.error);
+            }
+        });
+    }
+
+    function downvote(blogId, userId) {
+        fetch('vote.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ blogId: blogId, userId: userId, voteType: 'downvote' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const upvoteCount = document.querySelector('.upvote-count');
+                const downvoteCount = document.querySelector('.downvote-count');
+                upvoteCount.textContent = data.upvoteCount;
+                downvoteCount.textContent = data.downvoteCount;
+
+                document.querySelector('.downvote-btn').classList.add('highlight');
+                document.querySelector('.upvote-btn').classList.remove('highlight');
+            } else {
+                console.error(data.error);
+            }
+        });
+    }
+</script>
+</body>
+</html>

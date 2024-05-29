@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore Blogs</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background-image: url('background3.jpg'); /* Path to your background image */
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        .blog-list {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 60px;
+            background-color: rgba(255, 255, 255, 0.85); /* White background with reduced opacity */
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            width: 300px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .search-bar button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .blog-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .blog-item img {
+            max-width: 150px;
+            max-height: 150px;
+            margin-right: 20px;
+            border-radius: 10px;
+        }
+        .blog-item h2 {
+            font-size: 20px;
+            margin: 0;
+        }
+        .sort-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .sort-buttons button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Explore Blogs</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="explore.html">Explore</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="blog-list">
+        <div class="container">
+            <div class="sort-buttons">
+                <button onclick="sortBlogs('topRated')">Top Rated</button>
+                <button onclick="sortBlogs('recent')">Recently Published</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Enter Blog ID">
+                <button onclick="searchBlog()">Search</button>
+            </div>
+            <div id="blogs-container"></div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Interior Design Blog. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchBlogs();
+        });
+
+        function fetchBlogs(sortBy = 'recent') {
+            fetch(`fetch_blogs.php?sort=${sortBy}`)
+                .then(response => response.json())
+                .then(blogs => {
+                    const blogsContainer = document.getElementById('blogs-container');
+                    blogsContainer.innerHTML = '';
+                    blogs.forEach(blog => {
+                        const images = JSON.parse(blog.images);
+                        const blogItem = `
+                            <div class="blog-item">
+                                <img src="${images[0]}" alt="Blog Image">
+                                <div>
+                                    <h2>${blog.blog_id}</h2>
+                                    <p>Date: ${blog.date}</p>
+                                    <p>Upvotes: ${blog.upvotes}</p>
+                                    <p>Downvotes: ${blog.downvotes}</p>
+                                    <a href="view_blog.html?blog_id=${blog.blog_id}">View Blog</a>
+                                </div>
+                            </div>
+                        `;
+                        blogsContainer.innerHTML += blogItem;
+                    });
+                })
+                .catch(error => {
+                    const blogsContainer = document.getElementById('blogs-container');
+                    blogsContainer.innerHTML = `<p>Error loading blogs: ${error.message}</p>`;
+                });
+        }
+
+        function searchBlog() {
+            const blogId = document.getElementById('search-input').value.trim();
+            if (blogId) {
+                fetch(`fetch_blogs.php?blog_id=${blogId}`)
+                    .then(response => response.json())
+                    .then(blog => {
+                        const blogsContainer = document.getElementById('blogs-container');
+                        blogsContainer.innerHTML = '';
+                        if (blog) {
+                            const images = JSON.parse(blog.images);
+                            const blogItem = `
+                                <div class="blog-item">
+                                    <img src="${images[0]}" alt="Blog Image">
+                                    <div>
+                                        <h2>${blog.blog_id}</h2>
+                                        <p>Date: ${blog.date}</p>
+                                        <p>Upvotes: ${blog.upvotes}</p>
+                                        <p>Downvotes: ${blog.downvotes}</p>
+                                        <a href="view_blog.html?blog_id=${blog.blog_id}">View Blog</a>
+                                    </div>
+                                </div>
+                            `;
+                            blogsContainer.innerHTML = blogItem;
+                        } else {
+                            blogsContainer.innerHTML = '<p>No blog found with the provided ID.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        const blogsContainer = document.getElementById('blogs-container');
+                        blogsContainer.innerHTML = `<p>Error searching blog: ${error.message}</p>`;
+                    });
+            }
+        }
+
+        function sortBlogs(sortBy) {
+            fetchBlogs(sortBy);
+        }
+    </script>
+</body>
+</html>
